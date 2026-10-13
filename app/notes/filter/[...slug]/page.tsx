@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 
 import { HydrationBoundary, QueryClient, dehydrate } from '@tanstack/react-query';
 
-import { fetchNotes } from '@/lib/api';
+import { fetchNotes } from '@/lib/api/serverApi';
 import NotesClient from './Notes.client';
 
 type Props = {
