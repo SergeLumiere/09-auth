@@ -1,6 +1,7 @@
 import { getMe } from '@/lib/api/serverApi';
 import type { Metadata } from 'next';
 import css from './ProfilePage.module.css';
+import Image from 'next/image';
 
 export const metadata: Metadata = {
   title: 'Profile | NoteHub',
@@ -21,8 +22,7 @@ export default async function ProfilePage() {
         </div>
 
         <div className={css.avatarWrapper}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <Image
             src={user.avatar}
             alt="User Avatar"
             width={120}

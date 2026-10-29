@@ -26,22 +26,31 @@ export default function NoteList({ notes }: NoteListProps) {
   });
 
   return (
-    <ul className={css.list}>
-      {notes.map(note => (
-        <li className={css.listItem} key={note.id}>
-          <h2 className={css.title}>{note.title}</h2>
-          <p className={css.content}>{note.content}</p>
-          <div className={css.footer}>
-            <span className={css.tag}>{note.tag}</span>
+    <>
+      <ul className={css.list}>
+        {notes.map(note => (
+          <li className={css.listItem} key={note.id}>
+            <h2 className={css.title}>{note.title}</h2>
+            <p className={css.content}>{note.content}</p>
+            <div className={css.footer}>
+              <span className={css.tag}>{note.tag}</span>
 
-            <Link href={`/notes/${note.id}`}>View details</Link>
+              <Link href={`/notes/${note.id}`}>View details</Link>
 
-            <button className={css.button} onClick={() => deleteNoteMutation.mutate(note.id)}>
-              Delete
-            </button>
-          </div>
-        </li>
-      ))}
-    </ul>
+              <button
+                type="button"
+                className={css.button}
+                onClick={() => deleteNoteMutation.mutate(note.id)}
+                disabled={deleteNoteMutation.isPending}
+              >
+                Delete
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      {deleteNoteMutation.isError && <p role="alert">Failed to delete note. Please try again.</p>}
+    </>
   );
 }

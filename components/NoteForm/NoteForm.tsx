@@ -109,6 +109,7 @@ export default function NoteForm() {
           Create note
         </button>
       </div>
+      {createNoteMutation.isError && <p role="alert">Failed to create note. Please try again.</p>}
     </form>
   );
 }

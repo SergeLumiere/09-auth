@@ -54,7 +54,7 @@ export default function NotesClient({ tag }: NotesClientProps) {
         </Link>
       </header>
 
-      {data && data.notes.length > 0 && <NoteList notes={data.notes} />}
+      {data && (data.notes.length > 0 ? <NoteList notes={data.notes} /> : <p>No notes found.</p>)}
     </div>
   );
 }

@@ -68,6 +68,7 @@ function EditProfileForm({ user }: { user: User }) {
               className={css.input}
               value={username}
               onChange={event => setUsername(event.target.value)}
+              required
             />
           </div>
 
