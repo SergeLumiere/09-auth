@@ -14,6 +14,7 @@ export async function proxy(request: NextRequest) {
   const isPrivateRoute = privateRoutes.some(
     route => pathname === route || pathname.startsWith(`${route}/`)
   );
+
   const isPublicRoute = publicRoutes.some(
     route => pathname === route || pathname.startsWith(`${route}/`)
   );
@@ -24,76 +25,97 @@ export async function proxy(request: NextRequest) {
 
   if (!accessToken && refreshToken) {
     try {
-      const response = await checkServerSession(request.headers.get('cookie') ?? '');
+      const sessionResponse = await checkServerSession(request.headers.get('cookie') ?? '');
 
-      const setCookieHeaders = response.headers['set-cookie'];
+      const setCookieHeaders = sessionResponse.headers['set-cookie'];
+      const refreshedCookies = (
+        Array.isArray(setCookieHeaders)
+          ? setCookieHeaders
+          : setCookieHeaders
+            ? [setCookieHeaders]
+            : []
+      )
+        .map(cookieHeader => parseSetCookie(cookieHeader))
+        .filter(
+          (cookie): cookie is NonNullable<typeof cookie> & { value: string } =>
+            cookie !== undefined && typeof cookie.value === 'string' && cookie.value.length > 0
+        );
+
+      const hasAccessToken = refreshedCookies.some(cookie => cookie.name === 'accessToken');
 
       if (
-        response.status === 200 &&
-        setCookieHeaders?.some((cookieHeader: string) => {
-          const parsedCookie = parseSetCookie(cookieHeader);
-
-          return parsedCookie?.name === 'accessToken' && Boolean(parsedCookie.value);
-        })
+        sessionResponse.status === 200 &&
+        sessionResponse.data?.success === true &&
+        hasAccessToken
       ) {
-        const validCookies = [];
+        const requestHeaders = new Headers(request.headers);
+        const cookieValues = new Map(
+          (requestHeaders.get('cookie') ?? '')
+            .split(';')
+            .map(value => value.trim())
+            .filter(Boolean)
+            .map(value => {
+              const separator = value.indexOf('=');
+              return [value.slice(0, separator), value.slice(separator + 1)] as const;
+            })
+        );
 
-        for (const cookieHeader of setCookieHeaders) {
-          const parsedCookie = parseSetCookie(cookieHeader);
-
-          if (parsedCookie && parsedCookie.value !== undefined) {
-            request.cookies.set(parsedCookie.name, parsedCookie.value);
-            validCookies.push(cookieHeader);
-          }
+        for (const cookie of refreshedCookies) {
+          cookieValues.set(cookie.name, cookie.value);
         }
 
-        const nextResponse = NextResponse.next({
-          request: {
-            headers: request.headers,
-          },
-        });
+        requestHeaders.set(
+          'cookie',
+          [...cookieValues].map(([name, value]) => `${name}=${value}`).join('; ')
+        );
 
-        for (const cookieHeader of validCookies) {
-          nextResponse.headers.append('Set-Cookie', cookieHeader);
+        const response = isPublicRoute
+          ? NextResponse.redirect(new URL('/', request.url))
+          : NextResponse.next({
+              request: {
+                headers: requestHeaders,
+              },
+            });
+
+        for (const cookie of refreshedCookies) {
+          response.cookies.set(cookie.name, cookie.value, {
+            path: cookie.path ?? '/',
+            domain: cookie.domain,
+            expires: cookie.expires,
+            maxAge: cookie.maxAge,
+            httpOnly: cookie.httpOnly,
+            secure: cookie.secure,
+            sameSite: cookie.sameSite,
+          });
         }
 
-        if (isPublicRoute) {
-          const redirectResponse = NextResponse.redirect(new URL('/profile', request.url));
-
-          for (const cookieHeader of validCookies) {
-            redirectResponse.headers.append('Set-Cookie', cookieHeader);
-          }
-
-          return redirectResponse;
-        }
-
-        return nextResponse;
+        return response;
       }
 
       if (isPrivateRoute) {
-        const redirectResponse = NextResponse.redirect(new URL('/sign-in', request.url));
+        const response = NextResponse.redirect(new URL('/sign-in', request.url));
 
-        redirectResponse.cookies.delete('accessToken');
-        redirectResponse.cookies.delete('refreshToken');
+        response.cookies.delete('accessToken');
+        response.cookies.delete('refreshToken');
 
-        return redirectResponse;
+        return response;
       }
     } catch (error) {
       console.error('Session refresh failed:', error);
 
       if (isPrivateRoute) {
-        const redirectResponse = NextResponse.redirect(new URL('/sign-in', request.url));
+        const response = NextResponse.redirect(new URL('/sign-in', request.url));
 
-        redirectResponse.cookies.delete('accessToken');
-        redirectResponse.cookies.delete('refreshToken');
+        response.cookies.delete('accessToken');
+        response.cookies.delete('refreshToken');
 
-        return redirectResponse;
+        return response;
       }
     }
   }
 
   if (isPublicRoute && accessToken) {
-    return NextResponse.redirect(new URL('/profile', request.url));
+    return NextResponse.redirect(new URL('/', request.url));
   }
 
   return NextResponse.next();

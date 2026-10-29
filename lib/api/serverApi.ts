@@ -3,6 +3,7 @@ import type { Note } from '@/types/note';
 import { api } from './api';
 import type { FetchNotesParams, FetchNotesResponse } from './clientApi';
 import type { User } from '@/types/user';
+import type { AxiosResponse } from 'axios';
 
 const PER_PAGE = 12;
 
@@ -56,7 +57,7 @@ interface CheckSessionResponse {
   success: boolean;
 }
 
-export async function checkSession(): Promise<boolean> {
+export async function checkSession(): Promise<AxiosResponse<CheckSessionResponse>> {
   const cookieStore = await cookies();
 
   const response = await api.get<CheckSessionResponse>('/auth/session', {
@@ -65,7 +66,7 @@ export async function checkSession(): Promise<boolean> {
     },
   });
 
-  return response.data.success;
+  return response;
 }
 
 export async function checkServerSession(cookieHeader: string) {
