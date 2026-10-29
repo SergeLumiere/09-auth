@@ -67,3 +67,13 @@ export async function checkSession(): Promise<boolean> {
 
   return response.data.success;
 }
+
+export async function checkServerSession(cookieHeader: string) {
+  const response = await api.get('/auth/session', {
+    headers: {
+      Cookie: cookieHeader,
+    },
+  });
+
+  return response;
+}
